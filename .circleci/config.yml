@@ -19,14 +19,25 @@ jobs:
       - run:
           name: "Print World"
           command: "echo World"
+  print-name:
+    docker: 
+      - image: circleci/node:13.8.0
+    steps:
+      - run:
+          name: "Echo owner name from Environment Variable"
+          command: |
+            echo $OWNER
 
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  say-hello-workflow:
+  # say-hello-workflow:
+  #   jobs:
+  #     - print-hello
+  #     - print-world:
+  #         requires:
+  #           - print-hello
+  test-environment-variables:
     jobs:
-      - print-hello
-      - print-world:
-          requires:
-            - print-hello
+      - print-name
