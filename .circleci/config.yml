@@ -103,7 +103,22 @@ jobs:
           command: |
             aws cloudformation deploy \
             --template template.yml \
-            --stack << parameters.stack-name >>
+            --stack << parameters.stack-name >
+  configure_infrastructure:
+    docker:
+      - image: python:3.7-apline3.11
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["44:6f:bb:68:d8:89:a9:bb:46:85:08:01:57:39:e2:38"]
+      - run:
+          name: Install dependencies
+          command: | 
+            apk add --update ansible
+      - run:
+          name: Configure server
+          command: |
+            ansible-playbook -i inventory playbook.yml
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -129,9 +144,12 @@ workflows:
   # error_handling:
   #   jobs:
   #     - throw_and_handle_error
-  aws-cli:
-    jobs:
-      # - create_infrastructure_using_orb:
-      #     stack-name: My-Application
-      - create_infrastructure_using_docker_image:
-          stack-name: My-Application-<< pipeline.id >>
+  # aws-cli:
+  #   jobs:
+  #     # - create_infrastructure_using_orb:
+  #     #     stack-name: My-Application-<< pipeline.id >>
+  #     - create_infrastructure_using_docker_image:
+  #         stack-name: My-Application-<< pipeline.id >>
+  ansible:
+    jobs: 
+      - configure_infrastructure
