@@ -117,5 +117,6 @@ workflows:
   aws-cli:
     jobs:
       - create_infrastructure:
-          context: aws-427652416829-us-east-1
+          context: 
+            - aws-427652416829-us-east-1
           stack-name: My-Application
