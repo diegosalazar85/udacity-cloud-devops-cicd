@@ -68,7 +68,11 @@ jobs:
       - run:
           name: "Throw error"
           command: |
-            return 1
+            throwError() {
+              return 1
+            }
+
+            throwError
       - run: 
           name: "Print Hello Error"
           command: |
