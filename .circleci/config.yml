@@ -74,7 +74,7 @@ jobs:
           command: |
             echo Hello Error!
           when: on_fail
-  create_infrastructure:
+  create_infrastructure_using_orb:
     executor: aws-cli/default
     parameters:
       stack-name:
@@ -83,6 +83,21 @@ jobs:
     steps:
       - checkout
       - aws-cli/setup
+      - run: 
+          name: Deploy Cloudformation Template
+          command: |
+            aws cloudformation deploy \
+            --template template.yml \
+            --stack << parameters.stack-name >>
+  create_infrastructure_using_docker_image:
+    docker:
+      - image: amazon/aws-cli
+    parameters:
+      stack-name:
+        description: Name of the CloudFormation stack
+        type: string
+    steps:
+      - checkout
       - run: 
           name: Deploy Cloudformation Template
           command: |
@@ -116,5 +131,7 @@ workflows:
   #     - throw_and_handle_error
   aws-cli:
     jobs:
-      - create_infrastructure:
-          stack-name: My-Application
+      # - create_infrastructure_using_orb:
+      #     stack-name: My-Application
+      - create_infrastructure_using_docker_image:
+          stack-name: My-Application-<< pipeline.id >>
