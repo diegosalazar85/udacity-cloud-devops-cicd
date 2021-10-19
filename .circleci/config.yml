@@ -87,7 +87,7 @@ jobs:
           name: Deploy Cloudformation Template
           command: |
             aws cloudformation deploy \
-            --template my-template.yml \
+            --template template.yml \
             --stack << parameters.stack-name >>
 
 # Invoke jobs via workflows
