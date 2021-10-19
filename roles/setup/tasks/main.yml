@@ -12,7 +12,9 @@
 - name: install nodejs
   become: yes
   apt:
-    name: nodejs
+    name: 
+      - nodejs
+      - npm
     state: latest
     update_cache: yes
 
