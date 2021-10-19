@@ -75,8 +75,7 @@ jobs:
             echo Hello Error!
           when: on_fail
   create_infrastructure:
-    docker:
-      - image: amazon/aws-cli
+    executor: aws-cli/default
     parameters:
       stack-name:
         description: Name of the CloudFormation stack
@@ -115,7 +114,8 @@ workflows:
   # error_handling:
   #   jobs:
   #     - throw_and_handle_error
-  deploy:
+  aws-cli:
     jobs:
       - create_infrastructure:
+          context: aws
           stack-name: My-Application
