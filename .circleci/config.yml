@@ -61,6 +61,19 @@ jobs:
       - image: circleci/node:13.8.0
     steps:
       - print_pipeline_id
+  throw_and_handle_error:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - run:
+          name: "Throw error"
+          command: |
+            return 1
+      - run: 
+          name: "Print Hello Error"
+          command: |
+            echo Hello Error
+          when: on_fail
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -80,6 +93,9 @@ workflows:
   #     - print_output_file:
   #         requires:
   #           - save_hello_world_output
-  print_workflow_id:
+  # print_workflow_id:
+  #   jobs:
+  #     - print_workflow_id
+  error_handling:
     jobs:
-      - print_workflow_id
+      - throw_and_handle_error
