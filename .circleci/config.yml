@@ -158,6 +158,7 @@ jobs:
           command: |
             return 1
       - destroy_environment:
+          stack-name: << parameters.stack-name >>
           when: on_fail
 
 # Invoke jobs via workflows
