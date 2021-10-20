@@ -34,6 +34,7 @@ jobs:
       - run:
           name: "Print Hello"
           command: "echo Hello"
+
   print_world:
     docker: 
       - image: circleci/node:13.8.0
@@ -41,6 +42,7 @@ jobs:
       - run:
           name: "Print World"
           command: "echo World"
+
   print_name:
     docker: 
       - image: circleci/node:13.8.0
@@ -49,6 +51,7 @@ jobs:
           name: "Echo owner name from Environment Variable"
           command: |
             echo $OWNER
+
   save_hello_world_output:
     docker:
       - image: circleci/node:13.8.0
@@ -61,6 +64,7 @@ jobs:
           root: .
           paths:
             - output.txt
+
   print_output_file:
     docker:
       - image: circleci/node:13.8.0
@@ -71,11 +75,13 @@ jobs:
           name: "Print output from file"
           command: |
             cat output.txt
+
   print_workflow_id:
     docker:
       - image: circleci/node:13.8.0
     steps:
       - print_pipeline_id
+
   throw_and_handle_error:
     docker:
       - image: circleci/node:13.8.0
@@ -86,6 +92,7 @@ jobs:
           command: |
             echo Hello Error!
           when: on_fail
+
   create_infrastructure_using_orb:
     executor: aws-cli/default
     parameters:
@@ -101,6 +108,7 @@ jobs:
             aws cloudformation deploy \
             --template template.yml \
             --stack << parameters.stack-name >>
+
   create_infrastructure_using_docker_image:
     docker:
       - image: amazon/aws-cli
@@ -116,6 +124,7 @@ jobs:
             aws cloudformation deploy \
             --template template.yml \
             --stack << parameters.stack-name >
+
   configure_infrastructure:
     docker:
       - image: python:3.7.6-alpine3.11
@@ -132,6 +141,7 @@ jobs:
           name: Configure server
           command: |
             ansible-playbook -i inventory playbook.yml
+
   health_check:
     docker:
       - image: alpine:latest
@@ -147,6 +157,7 @@ jobs:
               echo "It failed"
               return 1
             fi
+
   simulate_error:
     docker:
       - image: amazon/aws-cli
@@ -162,6 +173,7 @@ jobs:
             return 1
       - destroy_environment:
           stack-name: << parameters.stack-name >>
+
   create_infrastructure:
     executor: aws-cli/default
     parameters:
@@ -181,6 +193,73 @@ jobs:
           return 1
       - destroy_environment:
           stack-name: << parameters.stack-name >>
+
+  create_and_deploy_front_end:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Execute bucket.yml - Create Cloudformation Stack
+          command: |
+            aws cloudformation deploy \
+            --template-file bucket.yml \
+            --stack-name stack-create-bucket-${CIRCLE_WORKFLOW_ID:0:7} \
+            --parameter-overrides MyBucketName="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+      - run: |
+          aws s3 sync . s3://mybucket-${CIRCLE_WORKFLOW_ID:0:7} --delete
+  
+  get_last_deployment_id:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: yum install -y tar gzip
+      - run:
+          name: Fetch and save the old pipeline ID (bucket name) responsible for the last release
+          command: |
+            aws cloudformation list-exports \
+            --query "Exports[?Name==\`PipelineID\`].Value" \
+            --no-paginate \
+            --output text \
+            > ~/textfile.txt
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - textfile.txt
+  
+  promote_to_production:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run:
+          name: Execute cloudfront.yml
+          command: |
+            aws cloudformation deploy \
+            --template-file cloudfront.yml \
+            --stack-name production-distro \
+            --parameter-overrides PipelineID="mybucket-${CIRCLE_WORKFLOW_ID:0:7}"
+
+  clean_up_old_front_end:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: yum install -y tar gzip
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Destroy the previous production version's S3 bucket and CloudFormation stack. 
+          # Use $OldBucketID environment variable or mybucket644752792305 below.
+          # Similarly, you can create and use $OldStackID environment variable in place of production-distro 
+          command: |
+            # export OldBucketID=$(cat ~/textfile.txt)
+            # aws s3 rm "s3://${OldBucketID}" --recursive
+            aws s3 rm "s3://mybucket-427652416829" --recursive
+            aws cloudformation delete-stack --stack-name production-distro 
+            # aws cloudformation delete-stack --stack-name stack-create-bucket-${CIRCLE_WORKFLOW_ID:0:7}
+            # aws cloudformation delete-stack --stack-name myStack-${CIRCLE_WORKFLOW_ID:0:5}
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -229,7 +308,19 @@ workflows:
   #         stack-name: My-Application-<< pipeline.id >>
   #         requires:
   #           - create_infrastructure_using_orb
-  rollback_exercise:
+  # rollback_exercise:
+  #   jobs:
+  #     - create_infrastructure:
+  #         stack-name: My-Application-<< pipeline.id >>
+  promote_to_production:
     jobs:
-      - create_infrastructure:
-          stack-name: My-Application-<< pipeline.id >>
+      - create_and_deploy_front_end
+      - promote_to_production:
+          requires:
+            - create_and_deploy_front_end
+      - get_last_deployment_id:
+          requires:
+            - promote_to_production
+      - clean_up_old_front_end:
+          requires:
+            - get_last_deployment_id
