@@ -18,8 +18,11 @@ commands:
         description: Name of the CloudFormation stack
         type: string
     steps:
-      - run: | 
-          aws cloudformation delete-stack --stack-name << parameters.stack-name >>
+      - run: 
+          name: Destroy environment
+          command: | 
+            aws cloudformation delete-stack --stack-name << parameters.stack-name >>
+          when: on_fail
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -159,7 +162,6 @@ jobs:
             return 1
       - destroy_environment:
           stack-name: << parameters.stack-name >>
-          when: on_fail
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
