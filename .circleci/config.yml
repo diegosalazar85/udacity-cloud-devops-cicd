@@ -162,6 +162,25 @@ jobs:
             return 1
       - destroy_environment:
           stack-name: << parameters.stack-name >>
+  create_infrastructure:
+    executor: aws-cli/default
+    parameters:
+      stack-name:
+        description: Name of the CloudFormation stack
+        type: string
+    steps:
+      - checkout
+      - aws-cli/setup
+      - run: 
+          name: Deploy Cloudformation Template
+          command: |
+            aws cloudformation deploy \
+            --template template.yml \
+            --stack << parameters.stack-name >>
+      - run: |
+          return 1
+      - destroy_environment:
+          stack-name: << parameters.stack-name >>
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -202,11 +221,15 @@ workflows:
   #     - health_check:
   #         requires:
   #           - configure_infrastructure
-  rollback_jobs:
+  # rollback_jobs:
+  #   jobs:
+  #     - create_infrastructure_using_orb:
+  #         stack-name: My-Application-<< pipeline.id >>
+  #     - simulate_error:
+  #         stack-name: My-Application-<< pipeline.id >>
+  #         requires:
+  #           - create_infrastructure_using_orb
+  rollback_exercise:
     jobs:
-      - create_infrastructure_using_orb:
+      - create_infrastructure:
           stack-name: My-Application-<< pipeline.id >>
-      - simulate_error:
-          stack-name: My-Application-<< pipeline.id >>
-          requires:
-            - create_infrastructure_using_orb
