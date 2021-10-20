@@ -165,11 +165,12 @@ workflows:
   #     #     stack-name: My-Application-<< pipeline.id >>
   #     - create_infrastructure_using_docker_image:
   #         stack-name: My-Application-<< pipeline.id >>
-  deploy:
-    jobs: 
-      - configure_infrastructure
+  # deploy:
+  #   jobs: 
+  #     - configure_infrastructure
   smoke_test:
     jobs:
+      - configure_infrastructure
       - health_check:
           requires:
             - configure_infrastructure
