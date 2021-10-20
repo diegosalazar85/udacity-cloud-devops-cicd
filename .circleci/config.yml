@@ -147,6 +147,10 @@ jobs:
   simulate_error:
     docker:
       - image: amazon/aws-cli
+    parameters:
+      stack-name:
+        description: Name of the CloudFormation stack
+        type: string
     steps:
       - checkout
       - run: 
