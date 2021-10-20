@@ -7,10 +7,20 @@ orbs:
 
 commands:
   print_pipeline_id:
-    description: "Prints Circle CI Workflow ID"
+    description: Prints Circle CI Workflow ID
     steps:
       - run: |
           echo $CIRCLE_WORKFLOW_ID
+  destroy_environment:
+    description: Destroy environment
+    parameters:
+      stack-name:
+        description: Name of the CloudFormation stack
+        type: string
+    steps:
+      - run: | 
+          aws cloudformation delete-stack --stack-name << parameters.stack-name >>
+    when: on_fail
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -124,6 +134,7 @@ jobs:
     docker:
       - image: alpine:latest
     steps:
+      - run: apk add --update curl
       - run: 
           name: Health Check
           command: |
@@ -134,6 +145,16 @@ jobs:
               echo "It failed"
               return 1
             fi
+  simulate_error:
+    docker:
+      - image: amazon/aws-cli
+    steps:
+      - checkout
+      - run: 
+          name: simulate error
+          command: |
+            return 1
+      - destroy_environment
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -168,9 +189,15 @@ workflows:
   # deploy:
   #   jobs: 
   #     - configure_infrastructure
-  smoke_test:
+  # smoke_test:
+  #   jobs:
+  #     - configure_infrastructure
+  #     - health_check:
+  #         requires:
+  #           - configure_infrastructure
+  rollback_jobs:
     jobs:
-      - configure_infrastructure
-      - health_check:
-          requires:
-            - configure_infrastructure
+      - create_infrastructure_using_orb:
+          stack-name: My-Application-<< pipeline.id >>
+      - simulate_error:
+          stack-name: My-Application-<< pipeline.id >>
