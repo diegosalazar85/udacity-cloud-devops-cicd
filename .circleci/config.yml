@@ -208,3 +208,5 @@ workflows:
           stack-name: My-Application-<< pipeline.id >>
       - simulate_error:
           stack-name: My-Application-<< pipeline.id >>
+          requires:
+            - create_infrastructure_using_orb
