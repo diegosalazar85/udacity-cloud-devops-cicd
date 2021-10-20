@@ -120,6 +120,20 @@ jobs:
           name: Configure server
           command: |
             ansible-playbook -i inventory playbook.yml
+  health_check:
+    docker:
+      - image: alpine:latest
+    steps:
+      - run: 
+          name: Health Check
+          command: |
+            if curl -s --head "3.82.19.161" 
+            then
+              echo "It worked!"
+            else
+              echo "It failed"
+              return 1
+            fi
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -151,6 +165,11 @@ workflows:
   #     #     stack-name: My-Application-<< pipeline.id >>
   #     - create_infrastructure_using_docker_image:
   #         stack-name: My-Application-<< pipeline.id >>
-  ansible:
+  deploy:
     jobs: 
       - configure_infrastructure
+  smoke_test:
+    jobs:
+      - health_check:
+          requires:
+            - configure_infrastructure
